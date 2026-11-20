@@ -1,0 +1,27 @@
+name: Monitor Diario TCAE Estatutario (BOE y DOGV)
+
+on:
+  schedule:
+    - cron: '30 8 * * 1-6' # Lunes a sábado a las 08:30 UTC (09:30 invierno / 10:30 verano en España)
+  workflow_dispatch:      # Permite lanzarlo manualmente cuando quieras probar
+
+jobs:
+  ejecutar-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar librería requests
+        run: pip install requests
+
+      - name: Ejecutar monitor de boletines
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python monitor.py
