@@ -90,12 +90,29 @@ def es_relevante(texto, exigir_contexto=True):
 
 def revisar_boe(fecha_str, vistos):
     url_sumario = f"https://www.boe.es/datosabiertos/api/boe/sumario/{fecha_str}"
-    resp = requests.get(url_sumario, headers={"Accept": "application/xml"}, timeout=20)
-    if resp.status_code != 200:
+    headers = {
+        "Accept": "application/xml",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
+
+    resp = None
+    for intento in range(2):
+        try:
+            resp = requests.get(url_sumario, headers=headers, timeout=20)
+            break
+        except requests.exceptions.RequestException as e:
+            print(f"[BOE {fecha_str}] Intento {intento + 1} fallido: {e}")
+
+    if resp is None or resp.status_code != 200:
         return []
 
     resultados = []
-    root = ET.fromstring(resp.content)
+    try:
+        root = ET.fromstring(resp.content)
+    except ET.ParseError as e:
+        print(f"[BOE {fecha_str}] Error al leer XML: {e}")
+        return []
+
     for item in root.findall(".//item"):
         titulo = (item.findtext("titulo") or "").strip()
         url_pdf = (item.findtext("url_pdf") or "").strip()
