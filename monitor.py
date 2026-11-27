@@ -14,9 +14,8 @@ MENCIONA_TCAE = [
     "auxiliares de enfermería",
     "auxiliares de enfermeria",
     "cuidados auxiliares",
-    "grupo c1",
-    "subgrupo c1",
-    "reclasificación"
+    "grupo c2",
+    "subgrupo c2"
 ]
 
 # Condiciones laborales, sueldo, jornada, mesa sectorial y OPE
