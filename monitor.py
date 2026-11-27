@@ -50,6 +50,8 @@ OTRAS_PROFESIONES = [
     "farmacéutico", "farmacéutica", "farmacia",
     "odontólogo", "odontóloga", "odontologia", "odontología",
     "logopeda", "logopedas", "terapeuta ocupacional", "psicólogo", "psicóloga", "psicologia", "psicología",
+    "fea", "auxiliar administrativo", "auxiliar administrativo/a",
+    "administrativo", "administrativos", "administrativa", "administrativas",
     "técnico superior", "tecnico superior", "laboratorio", "radiodiagnóstico", "radiodiagnostico", "imagen para el diagnóstico"
 ]
 
@@ -237,7 +239,7 @@ def revisar_sindicatos(vistos):
                 if not enlace or enlace in vistos:
                     continue
 
-                t_check = f" {titulo_raw.lower()} "
+                t_check = f" {titulo_raw.lower()} {enlace.lower()} "
 
                 if any(zona in t_check for zona in OTRAS_CCAA_Y_ZONAS):
                     continue
