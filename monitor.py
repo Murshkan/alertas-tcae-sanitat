@@ -42,7 +42,8 @@ CONTEXTO_SANIDAD = [
 FEEDS_SINDICATOS = {
     "CSIF Sanidad CV": "https://www.csif.es/es/rss/comunidad-valenciana/sanidad",
     "FSS-CCOO PV": "https://sanidad.ccoo.es/rss/pv",
-    "SATSE CV": "https://www.satse.es/comunidad-valenciana/rss"
+    "SATSE CV": "https://www.satse.es/comunidad-valenciana/rss",
+    "SAE Estatal": "https://www.sindicatosae.com/feed/"
 }
 
 TOKEN = os.environ["TELEGRAM_TOKEN"]
@@ -146,6 +147,13 @@ def revisar_dogv(fecha_iso, vistos):
 def revisar_sindicatos(vistos):
     resultados = []
     headers = {"User-Agent": "Mozilla/5.0"}
+    otras_ccaa = [
+        "andalucía", "andalucia", "madrid", "cataluña", "catalunya",
+        "galicia", "murcia", "extremadura", "castilla", "aragón", "aragon",
+        "asturias", "cantabria", "navarra", "rioja", "baleares", "canarias",
+        "euskadi", "país vasco", "pais vasco", "ceuta", "melilla"
+    ]
+
     for nombre, feed_url in FEEDS_SINDICATOS.items():
         try:
             resp = requests.get(feed_url, headers=headers, timeout=15)
@@ -157,8 +165,13 @@ def revisar_sindicatos(vistos):
                 enlace = (item.findtext("link") or "").strip()
                 if not enlace or enlace in vistos:
                     continue
-                # En sindicatos sanitarios ya estamos en contexto sanidad
-                if es_relevante(titulo, exigir_contexto=False):
+
+                if nombre == "SAE":
+                    # Avisa de todo lo estatal o de la Comunitat Valenciana, descartando otras CCAA
+                    if not any(ccaa in titulo.lower() for ccaa in otras_ccaa):
+                        vistos.add(enlace)
+                        resultados.append(f"📢 <b>{nombre}</b>: {titulo}\n🔗 {enlace}")
+                elif es_relevante(titulo, exigir_contexto=False):
                     vistos.add(enlace)
                     resultados.append(f"📢 <b>{nombre}</b>: {titulo}\n🔗 {enlace}")
         except Exception:
