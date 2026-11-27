@@ -146,7 +146,12 @@ def revisar_dogv(fecha_iso, vistos):
 
 def revisar_sindicatos(vistos):
     resultados = []
-    headers = {"User-Agent": "Mozilla/5.0"}
+    # Cabeceras completas de navegador real para evitar bloqueos 403 en WordPress
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        "Accept-Language": "es-ES,es;q=0.9"
+    }
     otras_ccaa = [
         "andalucía", "andalucia", "madrid", "cataluña", "catalunya",
         "galicia", "murcia", "extremadura", "castilla", "aragón", "aragon",
@@ -156,26 +161,45 @@ def revisar_sindicatos(vistos):
 
     for nombre, feed_url in FEEDS_SINDICATOS.items():
         try:
-            resp = requests.get(feed_url, headers=headers, timeout=15)
+            resp = requests.get(feed_url, headers=headers, timeout=20)
+            print(f"[{nombre}] Estado HTTP: {resp.status_code}")
             if resp.status_code != 200:
                 continue
-            root = ET.fromstring(resp.content)
-            for item in root.findall(".//item")[:15]:
-                titulo = (item.findtext("title") or "").strip()
+
+            contenido = resp.content.strip()
+            root = ET.fromstring(contenido)
+
+            # Busca tanto formato RSS (<item>) como Atom (<entry>)
+            items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
+            print(f"[{nombre}] Noticias encontradas en el feed: {len(items)}")
+
+            for item in items[:15]:
+                titulo = (
+                    item.findtext("title")
+                    or item.findtext("{http://www.w3.org/2005/Atom}title")
+                    or ""
+                ).strip()
+
                 enlace = (item.findtext("link") or "").strip()
+                if not enlace:
+                    link_el = item.find("{http://www.w3.org/2005/Atom}link")
+                    if link_el is not None:
+                        enlace = (link_el.get("href") or "").strip()
+
                 if not enlace or enlace in vistos:
                     continue
 
                 if nombre == "SAE":
-                    # Avisa de todo lo estatal o de la Comunitat Valenciana, descartando otras CCAA
                     if not any(ccaa in titulo.lower() for ccaa in otras_ccaa):
                         vistos.add(enlace)
                         resultados.append(f"📢 <b>{nombre}</b>: {titulo}\n🔗 {enlace}")
                 elif es_relevante(titulo, exigir_contexto=False):
                     vistos.add(enlace)
                     resultados.append(f"📢 <b>{nombre}</b>: {titulo}\n🔗 {enlace}")
-        except Exception:
+        except Exception as e:
+            print(f"[{nombre}] Error leyendo feed: {e}")
             continue
+
     return resultados
 
 
