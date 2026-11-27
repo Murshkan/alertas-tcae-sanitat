@@ -38,10 +38,10 @@ CONTEXTO_SANIDAD = [
     "servicios de salud", "ingesa"
 ]
 
-# Fuentes RSS operativas (Puente directo para SAE + Google News Sindicatos Sanidad CV)
+# Rastreo exclusivo en webs oficiales de sindicatos (sin prensa ni radio)
 FEEDS_SINDICATOS = {
-    "SAE": "https://api.rss2json.com/v1/api.json?rss_url=https://www.sindicatosae.com/feed/",
-    "Sindicatos Sanitat CV (CSIF/SATSE/CCOO/UGT)": "https://news.google.com/rss/search?q=(CSIF+OR+SATSE+OR+CCOO+OR+UGT+OR+Intersindical)+(Sanitat+OR+TCAE+OR+\"Mesa+Sectorial\"+OR+\"personal+estatutario\")+(Valenciana+OR+Valencia+OR+Alicante+OR+Castellón)&hl=es&gl=ES&ceid=ES:es"
+    "SAE": "https://news.google.com/rss/search?q=site:sindicatosae.com&hl=es&gl=ES&ceid=ES:es",
+    "Sindicatos Oficiales": "https://news.google.com/rss/search?q=(site:csif.es+OR+site:satse.es+OR+site:sanidad.ccoo.es+OR+site:ugt-sp.es)+(Sanitat+OR+TCAE+OR+\"Mesa+Sectorial\"+OR+\"personal+estatutario\"+OR+\"Comunitat+Valenciana\"+OR+Valencia+OR+Alicante+OR+Castellón)&hl=es&gl=ES&ceid=ES:es"
 }
 
 TOKEN = os.environ["TELEGRAM_TOKEN"]
@@ -161,33 +161,23 @@ def revisar_sindicatos(vistos):
             if resp.status_code != 200:
                 continue
 
-            # Caso 1: Puente JSON (usado para saltar el bloqueo 403 del SAE)
-            if "rss2json.com" in feed_url:
-                datos = resp.json()
-                items = datos.get("items", [])
-                print(f"[{nombre}] Noticias encontradas: {len(items)}")
-                for item in items[:15]:
-                    titulo = (item.get("title") or "").strip()
-                    enlace = (item.get("link") or "").strip()
-                    if not enlace or enlace in vistos:
-                        continue
+            root = ET.fromstring(resp.content.strip())
+            items = root.findall(".//item")
+            print(f"[{nombre}] Publicaciones encontradas: {len(items)}")
+
+            for item in items[:15]:
+                titulo = (item.findtext("title") or "").strip()
+                enlace = (item.findtext("link") or "").strip()
+                if not enlace or enlace in vistos:
+                    continue
+
+                if nombre == "SAE":
                     if not any(ccaa in titulo.lower() for ccaa in otras_ccaa):
                         vistos.add(enlace)
-                        resultados.append(f"📢 <b>{nombre}</b>: {titulo}\n🔗 {enlace}")
-
-            # Caso 2: Feed XML estándar (Google News Sindicatos Sanitat CV)
-            else:
-                root = ET.fromstring(resp.content.strip())
-                items = root.findall(".//item")
-                print(f"[{nombre}] Noticias encontradas: {len(items)}")
-                for item in items[:15]:
-                    titulo = (item.findtext("title") or "").strip()
-                    enlace = (item.findtext("link") or "").strip()
-                    if not enlace or enlace in vistos:
-                        continue
-                    if es_relevante(titulo, exigir_contexto=False):
-                        vistos.add(enlace)
-                        resultados.append(f"📢 <b>Prensa / Sindicatos CV</b>: {titulo}\n🔗 {enlace}")
+                        resultados.append(f"📢 <b>Web SAE</b>: {titulo}\n🔗 {enlace}")
+                elif es_relevante(titulo, exigir_contexto=False):
+                    vistos.add(enlace)
+                    resultados.append(f"📢 <b>Web Sindical</b>: {titulo}\n🔗 {enlace}")
 
         except Exception as e:
             print(f"[{nombre}] Error leyendo feed: {e}")
