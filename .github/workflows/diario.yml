@@ -1,9 +1,12 @@
-name: Monitor Diario TCAE Estatutario (BOE y DOGV)
+name: Monitor Diario TCAE Estatutario (BOE, DOGV y Sindicatos)
 
 on:
   schedule:
-    - cron: '30 8 * * 1-6' # Lunes a sábado a las 08:30 UTC (09:30 invierno / 10:30 verano en España)
-  workflow_dispatch:      # Permite lanzarlo manualmente cuando quieras probar
+    - cron: '30 8 * * 1-6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   ejecutar-monitor:
@@ -20,8 +23,16 @@ jobs:
       - name: Instalar librería requests
         run: pip install requests
 
-      - name: Ejecutar monitor de boletines
+      - name: Ejecutar monitor
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python monitor.py
+
+      - name: Guardar historial de avisos enviados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add vistos.txt || true
+          git diff --staged --quiet || git commit -m "Actualizar historial de avisos"
+          git push
